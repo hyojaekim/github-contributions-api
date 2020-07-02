@@ -12,12 +12,14 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/:user/:format', (req, res, next) => {
   const { format, user } = req.params;
+  const requestYear = req.query.year;
+  const requestMonth = req.query.month;
 
   // Render 400 if invalid format given
   const VALID_FORMATS = ['activity', 'count'];
   if (!VALID_FORMATS.includes(format)) {
-    return next({ 
-      status: 400, 
+    return next({
+      status: 400,
       message: `Format must be one of ${JSON.stringify(VALID_FORMATS)}`
     });
   }
@@ -35,7 +37,7 @@ app.get('/:user/:format', (req, res, next) => {
 
     // Parse github profile page
     const $ = cheerio.load(body);
-    const data = $('rect').get().reduce((data, rect) => {
+    var data = $('rect').get().reduce((data, rect) => {
       // Parse contributions value
       const value = (() => {
         const count = $(rect).data('count');
@@ -50,6 +52,17 @@ app.get('/:user/:format', (req, res, next) => {
 
       return data;
     }, {});
+
+    // Parse data for the year and month
+    if (requestYear && requestMonth) {
+      if (!Object.keys(data).includes(requestYear) || !Object.keys(data[requestYear]).includes(requestMonth)) {
+        return next({
+          status: 404,
+          message: `There is no data on that date`
+        });
+      }
+      data = data[requestYear][requestMonth];
+    }
 
     // Render parsed contributions data
     res.json({ data });
